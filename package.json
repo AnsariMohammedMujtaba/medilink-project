@@ -4,7 +4,7 @@
   "description": "A simple API server to read a drug interaction CSV.",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
