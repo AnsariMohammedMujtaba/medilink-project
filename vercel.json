@@ -1,5 +1,14 @@
 {
   "version": 2,
+  "functions": {
+    "index.js": {
+      "includeFiles": [
+        "drug-data.csv",
+        "Drugs-Type.csv",
+        "drug-contraindication.csv"
+      ]
+    }
+  },
   "builds": [
     {
       "src": "index.js",
