@@ -32,7 +32,7 @@
           My Drug Interaction Checker
         </h1>
         <p style="color: var(--color-gray-600); margin-top: -0.5rem; margin-bottom: 1.5rem">
-          Enter two drugs to check for interactions using your local API.
+          Enter two drugs to check for interactions.
         </p>
 
         <div class="grid-container grid-cols-2" style="margin-bottom: 1.5rem">
@@ -97,140 +97,148 @@
     </main>
 
     <script>
-  fetch("navbar.html")
-    .then((res) => res.text())
-    .then((data) => {
-      document.getElementById("navbar-placeholder").innerHTML = data;
-    })
-    .then(() => {
-      initNavbar();
-      document.getElementById("nav-interactions")?.classList.add("active");
-      document.getElementById("mobile-nav-interactions")?.classList.add("active");
-    });
-</script>
+      fetch("navbar.html")
+        .then((res) => res.text())
+        .then((data) => {
+          document.getElementById("navbar-placeholder").innerHTML = data;
+        })
+        .then(() => {
+          initNavbar();
+          document.getElementById("nav-interactions")?.classList.add("active");
+          document.getElementById("mobile-nav-interactions")?.classList.add("active");
+        });
+    </script>
 
-<script>
-  const drug1Input = document.getElementById("drug-1-input");
-  const drug2Input = document.getElementById("drug-2-input");
-  const suggestionsBox1 = document.getElementById("suggestions-box-1");
-  const suggestionsBox2 = document.getElementById("suggestions-box-2");
-  const checkBtn = document.getElementById("check-btn");
-  const resultsArea = document.getElementById("results-area");
-  const loadingDiv = document.getElementById("loading");
-  const resultsContent = document.getElementById("results-content");
-
-  drug1Input.addEventListener("input", () => handleType(drug1Input.value, 1));
-  drug2Input.addEventListener("input", () => handleType(drug2Input.value, 2));
-  checkBtn.addEventListener("click", findInteractions);
-
-  document.addEventListener("click", (e) => {
-    if (!drug1Input.contains(e.target))
-      suggestionsBox1.classList.add("hidden");
-    if (!drug2Input.contains(e.target))
-      suggestionsBox2.classList.add("hidden");
-  });
-
-  async function handleType(term, boxId) {
-    const searchTerm = term.trim().toLowerCase();
-    const suggestionsBox = boxId === 1 ? suggestionsBox1 : suggestionsBox2;
-    if (searchTerm.length < 2) {
-      suggestionsBox.classList.add("hidden");
-      suggestionsBox.innerHTML = "";
-      return;
-    }
-    try {
-      // --- URL FIXED ---
-      const response = await fetch(`/search-drug?term=${encodeURIComponent(searchTerm)}`);
-      if (!response.ok) return;
-      const suggestions = await response.json();
-      displaySuggestions(suggestions, boxId);
-    } catch (error) {
-      console.error("Error fetching suggestions:", error);
-      suggestionsBox.classList.add("hidden");
-    }
-  }
-
-  function displaySuggestions(suggestions, boxId) {
-    const suggestionsBox = boxId === 1 ? suggestionsBox1 : suggestionsBox2;
-    const input = boxId === 1 ? drug1Input : drug2Input;
-    if (suggestions.length === 0) {
-      suggestionsBox.classList.add("hidden");
-      return;
-    }
-    suggestionsBox.innerHTML = "";
-    suggestions.forEach((suggestion) => {
-      const div = document.createElement("div");
-      div.textContent = suggestion;
-      div.className = "suggestion-item";
-      div.addEventListener("click", () => {
-        input.value = suggestion;
-        suggestionsBox.classList.add("hidden");
-        suggestionsBox.innerHTML = "";
+    <script>
+      const drug1Input = document.getElementById("drug-1-input");
+      const drug2Input = document.getElementById("drug-2-input");
+      const suggestionsBox1 = document.getElementById("suggestions-box-1");
+      const suggestionsBox2 = document.getElementById("suggestions-box-2");
+      const checkBtn = document.getElementById("check-btn");
+      const resultsArea = document.getElementById("results-area");
+      const loadingDiv = document.getElementById("loading");
+      const resultsContent = document.getElementById("results-content");
+      
+      drug1Input.addEventListener("input", () => handleType(drug1Input.value, 1));
+      drug2Input.addEventListener("input", () => handleType(drug2Input.value, 2));
+      checkBtn.addEventListener("click", findInteractions);
+      
+      document.addEventListener("click", (e) => {
+        if (!drug1Input.contains(e.target))
+          suggestionsBox1.classList.add("hidden");
+        if (!drug2Input.contains(e.target))
+          suggestionsBox2.classList.add("hidden");
       });
-      suggestionsBox.appendChild(div);
-    });
-    suggestionsBox.classList.remove("hidden");
-  }
-
-  async function findInteractions() {
-    const drug1 = drug1Input.value.trim();
-    const drug2 = drug2Input.value.trim();
-    if (drug1 === "" || drug2 === "") {
-      alert("Please select two drugs to check.");
-      return;
-    }
-    resultsArea.classList.remove("hidden");
-    resultsContent.classList.add("hidden");
-    loadingDiv.classList.remove("hidden");
-    checkBtn.disabled = true;
-
-    try {
-      const drugQuery = [drug1, drug2].join(",");
-      // --- URL FIXED ---
-      const apiUrl = `/check-interactions?drugs=${encodeURIComponent(drugQuery)}`;
-      const response = await fetch(apiUrl);
-      if (!response.ok) {
-        throw new Error(`Server responded with an error (status: ${response.status})`);
+      
+      async function handleType(term, boxId) {
+        const searchTerm = term.trim().toLowerCase();
+        const suggestionsBox = boxId === 1 ? suggestionsBox1 : suggestionsBox2;
+        if (searchTerm.length < 2) {
+          suggestionsBox.classList.add("hidden");
+          suggestionsBox.innerHTML = "";
+          return;
+        }
+        try {
+          // --- URL FIXED: Added /api prefix ---
+          const response = await fetch(
+            `/api/search-drug?term=${encodeURIComponent(
+              searchTerm
+            )}`
+          );
+          if (!response.ok) return;
+          const suggestions = await response.json();
+          displaySuggestions(suggestions, boxId);
+        } catch (error) {
+          console.error("Error fetching suggestions:", error);
+          suggestionsBox.classList.add("hidden");
+        }
       }
-      const data = await response.json();
-      displayResults(data);
-    } catch (error) {
-      console.error("Error checking interactions:", error);
-      resultsContent.innerHTML = `<p style="color: var(--color-red)">Could not fetch data. (Error: ${error.message})</p>`;
-    }
-    
-    loadingDiv.classList.add("hidden");
-    resultsContent.classList.remove("hidden");
-    checkBtn.disabled = false;
-  }
-
-  function displayResults(data) {
-    if (data && data.length > 0) {
-      let htmlOutput = "";
-      data.forEach((interaction) => {
-        const drug1 = interaction.drugs[0];
-        const drug2 = interaction.drugs[1];
-        const description = interaction.description;
-        htmlOutput += `
-          <div class="interaction-card">
-              <strong>Interaction Found</strong>
-              <p style="margin: 0.5rem 0;" class="capitalize">
-                  Between <strong style="color: #000">${drug1}</strong> and <strong style="color: #000">${drug2}</strong>
-              </p>
-              <p style="color: var(--color-gray-600); margin: 0;">${description}</p>
-          </div>
-        `;
-      });
-      resultsContent.innerHTML = htmlOutput;
-    } else {
-      resultsContent.innerHTML = `
-        <div class="no-interaction-card">
-            <strong>No Interactions Found</strong>
-            <p style="color: var(--color-gray-600); margin: 0.25rem 0 0 0;">No interactions were found between the selected drugs in your database.</p>
-        </div>
-      `;
-    }
-  }
-</script>
+      
+      function displaySuggestions(suggestions, boxId) {
+        const suggestionsBox = boxId === 1 ? suggestionsBox1 : suggestionsBox2;
+        const input = boxId === 1 ? drug1Input : drug2Input;
+        if (suggestions.length === 0) {
+          suggestionsBox.classList.add("hidden");
+          return;
+        }
+        suggestionsBox.innerHTML = "";
+        suggestions.forEach((suggestion) => {
+          const div = document.createElement("div");
+          div.textContent = suggestion;
+          div.className = "suggestion-item";
+          div.addEventListener("click", () => {
+            input.value = suggestion;
+            suggestionsBox.classList.add("hidden");
+            suggestionsBox.innerHTML = "";
+          });
+          suggestionsBox.appendChild(div);
+        });
+        suggestionsBox.classList.remove("hidden");
+      }
+      
+      async function findInteractions() {
+        const drug1 = drug1Input.value.trim();
+        const drug2 = drug2Input.value.trim();
+        if (drug1 === "" || drug2 === "") {
+          alert("Please select two drugs to check.");
+          return;
+        }
+        resultsArea.classList.remove("hidden");
+        resultsContent.classList.add("hidden");
+        loadingDiv.classList.remove("hidden");
+        checkBtn.disabled = true;
+        
+        try {
+          const drugQuery = [drug1, drug2].join(",");
+          // --- URL FIXED: Added /api prefix ---
+          const apiUrl = `/api/check-interactions?drugs=${encodeURIComponent(
+            drugQuery
+          )}`;
+          const response = await fetch(apiUrl);
+          if (!response.ok) {
+            throw new Error(
+              `Server responded with an error (status: ${response.status})`
+            );
+          }
+          const data = await response.json();
+          displayResults(data);
+        } catch (error) {
+          console.error("Error checking interactions:", error);
+          resultsContent.innerHTML = `<p style="color: var(--color-red)">Could not connect to API. (Error: ${error.message})</p>`;
+        }
+        
+        loadingDiv.classList.add("hidden");
+        resultsContent.classList.remove("hidden");
+        checkBtn.disabled = false;
+      }
+      
+      function displayResults(data) {
+        if (data && data.length > 0) {
+          let htmlOutput = "";
+          data.forEach((interaction) => {
+            const drug1 = interaction.drugs[0];
+            const drug2 = interaction.drugs[1];
+            const description = interaction.description;
+            htmlOutput += `
+              <div class="interaction-card">
+                  <strong>Interaction Found</strong>
+                  <p style="margin: 0.5rem 0;" class="capitalize">
+                      Between <strong style="color: #000">${drug1}</strong> and <strong style="color: #000">${drug2}</strong>
+                  </p>
+                  <p style="color: var(--color-gray-600); margin: 0;">${description}</p>
+              </div>
+            `;
+          });
+          resultsContent.innerHTML = htmlOutput;
+        } else {
+          resultsContent.innerHTML = `
+            <div class="no-interaction-card">
+                <strong>No Interactions Found</strong>
+                <p style="color: var(--color-gray-600); margin: 0.25rem 0 0 0;">No interactions were found between the selected drugs in your database.</p>
+            </div>
+          `;
+        }
+      }
+    </script>
   </body>
 </html>

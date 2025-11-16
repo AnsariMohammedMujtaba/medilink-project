@@ -5,24 +5,28 @@ const cors = require('cors');
 const path = require('path');
 
 const app = express();
-const port = 3000;
+// Vercel uses process.env.PORT
+const port = process.env.PORT || 3000; 
 const PAGE_SIZE = 20; 
-// --- Make sure all these are here ---
+
 let interactions = []; 
 let uniqueDrugNames = new Set();
 let drugDetails = []; 
 let contraindicationData = []; 
 let contraindicationTerms = new Set(); 
 let allFilterData = {}; 
-// -------
 
 app.use(cors());
 
-// --- NEW: Serve static files like style.css and navbar.html ---
-app.use(express.static(path.join(__dirname)));
+// STATIC FILE SERVING IS REMOVED. Vercel handles this.
 
 // --- LOADER 1: Your interactions CSV ---
-fs.createReadStream('drug-data.csv')
+// --- PATH FIXED: Added '../' to go up one folder ---
+const csvPath1 = path.join(__dirname, '../drug-data.csv');
+fs.createReadStream(csvPath1)
+  .on('error', (err) => { 
+    console.error('!!! FAILED TO READ drug-data.csv !!!', err);
+  })
   .pipe(csv())
   .on('data', (row) => {
     interactions.push(row);
@@ -36,7 +40,12 @@ fs.createReadStream('drug-data.csv')
   });
 
 // --- LOADER 2: Your drug type CSV ---
-fs.createReadStream('Drugs-Type.csv')
+// --- PATH FIXED: Added '../' to go up one folder ---
+const csvPath2 = path.join(__dirname, '../Drugs-Type.csv');
+fs.createReadStream(csvPath2)
+  .on('error', (err) => { 
+    console.error('!!! FAILED TO READ Drugs-Type.csv !!!', err);
+  })
   .pipe(csv())
   .on('data', (row) => {
     if (row.Type) {
@@ -76,13 +85,17 @@ fs.createReadStream('Drugs-Type.csv')
   });
 
 // --- LOADER 3: Your contraindication CSV ---
-fs.createReadStream('drug-contraindication.csv')
+// --- PATH FIXED: Added '../' to go up one folder ---
+const csvPath3 = path.join(__dirname, '../drug-contraindication.csv');
+fs.createReadStream(csvPath3)
+  .on('error', (err) => { 
+    console.error('!!! FAILED TO READ drug-contraindication.csv !!!', err);
+  })
   .pipe(csv())
   .on('data', (row) => {
       contraindicationData.push(row);
       
       const terms = (row.contraindications || '').toLowerCase(); 
-      
       const splitTerms = terms.split(/[,;]/); 
       
       splitTerms.forEach(term => {
@@ -103,15 +116,17 @@ fs.createReadStream('drug-contraindication.csv')
 let filesLoaded = 0;
 function checkIfServerReady() {
     filesLoaded++;
-    if (filesLoaded === 3) { // Now waiting for 3 files
+    if (filesLoaded === 3) { 
         console.log(`All CSV files loaded. Server is ready!`);
-        console.log(`Open http://localhost:${port} in your browser.`);
     }
 }
   
-// --- All APIs (No Changes) ---
+// --- All APIs ---
+// By default, Vercel will make this file available at /api
+// So we just need to define the routes *after* /api
 
-app.get('/search-drug', (req, res) => {
+// --- ROUTE FIXED: Added /api prefix ---
+app.get('/api/search-drug', (req, res) => {
   const term = (req.query.term || '').toLowerCase();
   if (!term) {
     return res.json([]);
@@ -122,7 +137,8 @@ app.get('/search-drug', (req, res) => {
   res.json(results.slice(0, 10));
 });
 
-app.get('/check-interactions', (req, res) => {
+// --- ROUTE FIXED: Added /api prefix ---
+app.get('/api/check-interactions', (req, res) => {
   const drugQuery = req.query.drugs;
   if (!drugQuery) {
     return res.status(400).json({ error: 'No drugs provided.' });
@@ -163,6 +179,7 @@ app.get('/api/drug-filters', (req, res) => {
 });
 
 app.get('/api/drugs-by-type', (req, res) => {
+  // ... (no changes to the logic inside this function) ...
   const drugType = (req.query.type || '').toLowerCase();
   const brandName = (req.query.brandName || '').toLowerCase(); 
   const genericName = (req.query.genericName || '').toLowerCase(); 
@@ -202,6 +219,7 @@ app.get('/api/drugs-by-type', (req, res) => {
 });
 
 app.get('/api/search-contraindications', (req, res) => {
+  // ... (no changes to the logic inside this function) ...
     const contraTerm = (req.query.contra || '').toLowerCase().trim();
     const drugName = (req.query.drug || '').toLowerCase().trim();
     if (contraTerm.length < 3 || drugName.length < 2) { 
@@ -224,6 +242,7 @@ app.get('/api/search-contraindications', (req, res) => {
 });
 
 app.get('/api/contraindication-suggestions', (req, res) => {
+  // ... (no changes to the logic inside this function) ...
     const term = (req.query.term || '').toLowerCase().trim();
     if (term.length < 2) {
         return res.json([]);
@@ -233,6 +252,7 @@ app.get('/api/contraindication-suggestions', (req, res) => {
 });
 
 app.get('/api/drug-suggestions-by-contra', (req, res) => {
+  // ... (no changes to the logic inside this function) ...
     const contraTerm = (req.query.contra || '').toLowerCase().trim();
     const drugTerm = (req.query.term || '').toLowerCase().trim();
     if (contraTerm.length < 2 || drugTerm.length < 2) {
@@ -251,34 +271,16 @@ app.get('/api/drug-suggestions-by-contra', (req, res) => {
 });
 
 
-// --- UPDATED: Code to serve your HTML pages ---
-
-// 1. Home Page (index.html) - This is now the NEW homepage
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// 2. NEW: Drug Interactions Page (Your old homepage)
-app.get('/interactions.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'interactions.html'));
-});
-
-// 3. About Page (about.html)
-app.get('/about.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'about.html'));
-});
-
-// 4. Drugs by Type Page (drugs.html)
-app.get('/drugs.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'drugs.html'));
-});
-
-// 5. Contraindications Page
-app.get('/contraindications.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'contraindications.html'));
-});
+// --- ALL HTML PAGE ROUTES ARE REMOVED ---
 
 // --- Start the server ---
-app.listen(port, () => {
-  console.log(`Server process started. Loading CSV data...`);
-});
+// This part is only for local testing. Vercel runs the app.
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`Server running locally on http://localhost:${port}`);
+    console.log(`Loading CSV data...`);
+  });
+}
+
+// --- EXPORT THE APP FOR VERCEL ---
+module.exports = app;
